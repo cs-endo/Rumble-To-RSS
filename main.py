@@ -19,46 +19,52 @@ USERNAME = ""
 
 URL = f"{RUMBLE_URL}{USERNAME}"
 
+PAGES = 15
+
 
 # In[3]:
 
 
-page_raw = req.get(URL)
+pages = []
 
-if page_raw.status_code != 200:
-    print(f"Invalid page: Status {page_raw.status_code}")
-    exit
+for n in range(0, PAGES):
+    if USERNAME == "": # Putting this here to avoid ipython issues
+        break
+    
+    page_raw = req.get(f"{URL}?page={n}")
+    
+    page_soup = bs(page_raw.content, 'html.parser')
+    
+    if page_soup.h1.text == "404 - Not found":
+        break
+
+    
+    pages.append(page_soup.find_all("article"))
 
 
 # In[4]:
 
 
-page_soup = bs(page_raw.content, 'html.parser')
-page_articles = page_soup.find_all("article")
+data_dict = []
+
+for article_page in pages:
+    for article in article_page:
+        data_dict.append({
+            'title': article.h3.text,
+            'date': article.time["datetime"],
+            'duration': article.span["data-value"],
+            'URL': article.a["href"]
+        })
 
 
 # In[5]:
 
 
-data_dict = []
-
-for n, article in enumerate(page_articles):
-    data_dict.append({
-        'title': article.h3.text,
-        'date': article.time["datetime"],
-        'duration': article.span["data-value"],
-        'URL': article.a["href"]
-    })
-
-
-# In[6]:
-
-
 feed = FeedGenerator()
 feed.id(URL)
-feed.title(USERNAME)
+feed.title(f" {USERNAME} ")
 feed.link(rel="self", href=URL)
-feed.description(USERNAME) # Requires a description but none given on Rumble
+feed.description(f" {USERNAME} ") # Requires a description but none given on Rumble
 
 for item in data_dict:
     entry = feed.add_entry()
@@ -69,7 +75,7 @@ for item in data_dict:
     entry.link(href=item['URL'])
 
 
-# In[7]:
+# In[6]:
 
 
 #feed.rss_str(pretty=True)
